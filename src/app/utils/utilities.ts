@@ -1,3 +1,6 @@
+import { useTimeFormat } from './localization';
+import dayjs from 'dayjs';
+
 export function str2Hsl(source: string, saturation: number = 100, lightness: number = 60) {
   /**
    * Adapted from https://stackoverflow.com/a/21682946
@@ -38,4 +41,8 @@ export const getReversedRange = (start: number, count: number) => {
   }
 
   return result;
+};
+
+export const getFormattedTime = (d: Date) => {
+  return dayjs(d).format(useTimeFormat);
 };

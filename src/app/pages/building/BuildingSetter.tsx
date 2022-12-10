@@ -328,7 +328,7 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
         </Box>
 
         <Button type="submit" fullWidth variant="contained" sx={{ mt: 1, mb: 2 }}>
-          Save
+          {modelId === 0 ? 'Create' : 'Save'}
         </Button>
       </Box>
 

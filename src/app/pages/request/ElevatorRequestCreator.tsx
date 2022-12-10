@@ -118,6 +118,7 @@ const ElevatorRequestCreator = ({ buildingId, onCreated }: ElevatorRequestCreato
           inputProps={{
             min: 0,
             step: 1,
+            max: buildings[buildingId].countFloors - 1,
           }}
           value={data.targetFloor}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,8 +130,8 @@ const ElevatorRequestCreator = ({ buildingId, onCreated }: ElevatorRequestCreato
           }}
         />
 
-        <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
-          Save
+        <Button type="submit" fullWidth variant="contained" sx={{ mt: 1, mb: 2 }}>
+          Create
         </Button>
       </Box>
     </Box>

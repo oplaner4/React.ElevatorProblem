@@ -83,7 +83,7 @@ const PersonSetter = ({ modelId, onCorrectlySet }: ISetterProps<IPerson>) => {
         />
 
         <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
-          Save
+          {modelId === 0 ? 'Create' : 'Save'}
         </Button>
       </Box>
     </Box>
