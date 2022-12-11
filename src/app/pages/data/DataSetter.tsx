@@ -1,6 +1,6 @@
 import { Grid, Typography, Box, Button, Tooltip, List, ListItem, ButtonGroup } from '@mui/material';
 import AppModal from 'app/components/AppModal';
-import { buildingsAtom, peopleAtom } from 'app/state/atom';
+import { buildingsAtom, elevatorsAtom, peopleAtom } from 'app/state/atom';
 import { useState } from 'react';
 import { useRecoilState } from 'recoil';
 import BuildingSetter from '../building/BuildingSetter';
@@ -11,9 +11,11 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
 import { useNavigate } from 'react-router-dom';
+import BuildingProperties from 'app/components/building/BuildingProperties';
 
 const DataSetter = () => {
   const [buildings, setBuildings] = useRecoilState(buildingsAtom);
+  const [elevators, setElevators] = useRecoilState(elevatorsAtom);
   const [people, setPeople] = useRecoilState(peopleAtom);
 
   const [buildingModalContent, setBuildingModalContent] = useState<JSX.Element | null>(null);
@@ -43,11 +45,10 @@ const DataSetter = () => {
 
                 return (
                   <ListItem key={id}>
-                    <Box display="flex" justifyContent="space-between" width="100%">
-                      <Typography component="span" variant="h6" color="dark.main">
-                        #{building.id}, {building.countFloors} floors, {building.elevators.size} elevator(s), floor{' '}
-                        {building.floorHeight}m tall
-                      </Typography>
+                    <Box display="flex" justifyContent="space-between" flexWrap="wrap" width="100%">
+                      <Box>
+                        <BuildingProperties building={building} />
+                      </Box>
 
                       <ButtonGroup size="small">
                         <Tooltip title="Edit building">
@@ -71,6 +72,11 @@ const DataSetter = () => {
                         <Tooltip title="Delete building">
                           <Button
                             onClick={() => {
+                              const newElevators = { ...elevators };
+                              buildings[id].elevators.forEach((elevatorId) => {
+                                delete newElevators[elevatorId];
+                              });
+                              setElevators(newElevators);
                               const newBuildings = { ...buildings };
                               delete newBuildings[id];
                               setBuildings(newBuildings);

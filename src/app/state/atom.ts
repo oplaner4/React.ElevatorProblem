@@ -42,3 +42,8 @@ export const requestsAtom = atom<Record<number, IElevatorRequest>>({
   key: 'requests',
   default: {},
 });
+
+export const timeToLoadAtom = atom<number>({
+  key: 'timeToLoad',
+  default: 1000,
+});

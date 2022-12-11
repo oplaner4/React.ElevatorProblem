@@ -9,8 +9,9 @@ import {
   MenuItem,
   SelectChangeEvent,
 } from '@mui/material';
-import IElevatorRequest from 'app/models/IElevatorRequest';
-import { buildingsAtom, peopleAtom, requestsAtom } from 'app/state/atom';
+import IElevatorRequest, { IElevatorRequestStatus } from 'app/models/IElevatorRequest';
+import { buildingsAtom, elevatorsAtom, peopleAtom, requestsAtom } from 'app/state/atom';
+import { getRunnableElevators } from 'app/utils/data/elevatorSuitability';
 import { getNewId } from 'app/utils/data/idIncrementer';
 import { checkCorrectPersonWithinRequest } from 'app/utils/data/modelsChecker';
 import { useState } from 'react';
@@ -21,17 +22,20 @@ export interface ElevatorRequestCreatorProps {
   onCreated: (request: IElevatorRequest) => void;
 }
 
-const defaultData = {
+const defaultData: IElevatorRequest = {
   id: 0,
+  loadFloor: 0,
   targetFloor: 1,
   timeRequested: new Date(),
   personId: 0,
+  status: IElevatorRequestStatus.Created,
 };
 
 const ElevatorRequestCreator = ({ buildingId, onCreated }: ElevatorRequestCreatorProps) => {
   const [people, setPeople] = useRecoilState(peopleAtom);
   const [requests, setRequests] = useRecoilState(requestsAtom);
   const buildings = useRecoilValue(buildingsAtom);
+  const elevators = useRecoilValue(elevatorsAtom);
 
   const [data, setData] = useState<IElevatorRequest>({ ...defaultData });
 
@@ -40,15 +44,16 @@ const ElevatorRequestCreator = ({ buildingId, onCreated }: ElevatorRequestCreato
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    data.id = getNewId(requests);
-    data.timeRequested = new Date();
-
     if (!(data.personId in people)) {
       setMessageContent(<>No person selected.</>);
       return;
     }
 
-    const errorMsg = checkCorrectPersonWithinRequest(people[data.personId], data);
+    const person = people[data.personId];
+    data.id = getNewId(requests);
+    data.timeRequested = new Date();
+    data.loadFloor = person.currentBuildingId === null ? 0 : person.currentFloor;
+    const errorMsg = checkCorrectPersonWithinRequest(person, data);
 
     if (errorMsg.length > 0) {
       setMessageContent(<>{errorMsg}</>);
@@ -57,6 +62,21 @@ const ElevatorRequestCreator = ({ buildingId, onCreated }: ElevatorRequestCreato
 
     if (data.targetFloor >= buildings[buildingId].countFloors) {
       setMessageContent(<>The target floor must be smaller than the count of floors in the building.</>);
+      return;
+    }
+
+    if (getRunnableElevators(buildings[buildingId], elevators, data).length === 0) {
+      setMessageContent(<>No such elevator.</>);
+      return;
+    }
+
+    if (
+      Object.keys(requests).some((sid) => {
+        const request = requests[Number(sid)];
+        return request.status !== IElevatorRequestStatus.Finished && request.personId === data.personId;
+      })
+    ) {
+      setMessageContent(<>The person currently requests.</>);
       return;
     }
 

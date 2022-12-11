@@ -12,12 +12,14 @@ export interface ElevatorSetterProps extends ISetterProps<IElevator> {
 }
 
 const ElevatorSetter = ({ highestFloor, modelId, onCorrectlySet }: ElevatorSetterProps) => {
-  const defaultData = {
+  const defaultData: IElevator = {
     id: 0,
     lowestFloor: 0,
     highestFloor: highestFloor ?? 1,
     currentFloor: 0,
     speed: 2.5,
+    inService: false,
+    maxCountPeople: 10,
   };
 
   const [elevators, setElevators] = useRecoilState(elevatorsAtom);
@@ -122,6 +124,26 @@ const ElevatorSetter = ({ highestFloor, modelId, onCorrectlySet }: ElevatorSette
               setData({
                 ...data,
                 highestFloor: isNaN(parsed) ? 0 : parsed,
+              });
+            }}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            label="Max. count of people"
+            name="maxCountPeople"
+            type="number"
+            inputProps={{
+              min: 1,
+              step: 1,
+            }}
+            value={data.maxCountPeople}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              const parsed = parseInt(e.currentTarget.value);
+              setData({
+                ...data,
+                maxCountPeople: isNaN(parsed) ? 0 : parsed,
               });
             }}
           />

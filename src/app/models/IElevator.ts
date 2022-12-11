@@ -27,4 +27,13 @@ export default interface IElevator extends IUniqueModel {
    * It must be greater than zero.
    */
   speed: number;
+  /**
+   * The elevator currently runs.
+   */
+  inService: boolean;
+  /**
+   * The maximum count of people who can be loaded
+   * into the elevator.
+   */
+  maxCountPeople: number;
 }

@@ -15,6 +15,7 @@ import Chip from '@mui/material/Chip';
 import { getNewId } from 'app/utils/data/idIncrementer';
 import { predefinedElevators } from 'app/data/elevators';
 import IElevator from 'app/models/IElevator';
+import ElevatorProperties from 'app/components/elevator/ElevatorProperties';
 
 export const defaultBuilding: IBuilding = {
   id: 0,
@@ -46,6 +47,8 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
       highestFloor: 1,
       lowestFloor: 0,
       speed: data.floorHeight / 2,
+      inService: false,
+      maxCountPeople: 10,
     };
     setElevators(newElevators);
 
@@ -190,7 +193,7 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
       ) : null}
 
       <Box component="form" onSubmit={handleSubmit} noValidate>
-        <Grid container spacing={2}>
+        <Grid container spacing={2} justifyContent={{ xs: 'center', md: 'flex-start' }}>
           {modelId === 0 ? null : (
             <Grid item lg={12}>
               <TextField
@@ -286,11 +289,10 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
 
                 return (
                   <ListItem key={id}>
-                    <Box display="flex" justifyContent="space-between" width="100%">
-                      <Typography component="span" variant="subtitle1" color="dark.main">
-                        #{elevator.id}, currently in {elevator.currentFloor}, max. {elevator.highestFloor}, min.{' '}
-                        {elevator.lowestFloor}, speed {elevator.speed}m/s
-                      </Typography>
+                    <Box display="flex" justifyContent="space-between" width="100%" flexWrap="wrap">
+                      <Box>
+                        <ElevatorProperties elevator={elevator} />
+                      </Box>
                       <ButtonGroup size="small">
                         <Tooltip title="Edit elevator">
                           <Button

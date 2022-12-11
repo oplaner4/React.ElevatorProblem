@@ -18,5 +18,5 @@ export default interface IPerson extends IUniqueModel {
    * The current floor in which the person is.
    * It must be valid floor within the current building.
    */
-  currentFloor: 0;
+  currentFloor: number;
 }

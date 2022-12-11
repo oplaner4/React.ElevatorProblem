@@ -1,5 +1,5 @@
 import IBuilding from 'app/models/IBuilding';
-import IElevatorRequest from 'app/models/IElevatorRequest';
+import IElevatorRequest, { IElevatorRequestStatus } from 'app/models/IElevatorRequest';
 import IPerson from 'app/models/IPerson';
 
 export class BuildingManager {
@@ -26,9 +26,11 @@ export class BuildingManager {
 
     this._requests.push({
       id: this._totalRequestCount++,
+      loadFloor: 0,
       targetFloor,
       timeRequested: new Date(),
       personId: person.id,
+      status: IElevatorRequestStatus.Created,
     });
   }
 
