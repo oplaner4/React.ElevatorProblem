@@ -26,7 +26,7 @@ const DataSetter = () => {
   return (
     <Box>
       <Grid container spacing={4}>
-        <Grid item xs={12} md={9} lg={8}>
+        <Grid item xs={12} sm={6} md={7} lg={8}>
           <Typography component="h2" variant="h5" color="primary.main">
             Buildings
           </Typography>
@@ -120,7 +120,7 @@ const DataSetter = () => {
             )}
           </List>
         </Grid>
-        <Grid item xs={12} md={3} lg={4}>
+        <Grid item xs={12} sm={6} md={5} lg={4}>
           <Typography component="h2" variant="h5" color="primary.main">
             People
           </Typography>
@@ -138,7 +138,7 @@ const DataSetter = () => {
 
                 return (
                   <ListItem key={id}>
-                    <Box display="flex" justifyContent="space-between" width="100%">
+                    <Box display="flex" justifyContent="space-between" width="100%" flexWrap="wrap">
                       <Typography component="span" variant="h6" color="dark.main">
                         #{person.id}, {person.alias}
                       </Typography>
@@ -184,7 +184,7 @@ const DataSetter = () => {
             )}
           </List>
         </Grid>
-        <Grid item xs={12} md={9} lg={8}>
+        <Grid item xs={12} sm={6} md={7} lg={8}>
           <Box mb={2}>
             <Typography component="h2" variant="h5" color="primary.main">
               Create building
@@ -193,7 +193,7 @@ const DataSetter = () => {
 
           <BuildingSetter modelId={0} onCorrectlySet={() => {}} />
         </Grid>
-        <Grid item xs={12} md={3} lg={4}>
+        <Grid item xs={12} sm={6} md={5} lg={4}>
           <Box mb={2}>
             <Typography component="h2" variant="h5" color="primary.main">
               Create person
