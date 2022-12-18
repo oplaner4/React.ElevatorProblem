@@ -11,7 +11,8 @@ export default interface IPerson extends IUniqueModel {
   alias: string;
   /**
    * The building in which the person currently is.
-   * If null, the person is not in any building.
+   * If null, the person is in the ground floor of any
+   * building.
    */
   currentBuildingId: number | null;
   /**
@@ -19,4 +20,8 @@ export default interface IPerson extends IUniqueModel {
    * It must be valid floor within the current building.
    */
   currentFloor: number;
+  /**
+   * The person is requesting an elevator.
+   */
+  isRequesting: boolean;
 }

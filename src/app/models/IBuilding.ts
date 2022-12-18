@@ -5,8 +5,9 @@ import IUniqueModel from './IUniqueModel';
  */
 export default interface IBuilding extends IUniqueModel {
   /**
-   * The count of floors in the building.
-   * It must be greater than one.
+   * The count of floors in the building. Except of
+   * ground floor there must be at least one other floor
+   * thus it must be greater than one.
    */
   countFloors: number;
   /**
@@ -22,4 +23,10 @@ export default interface IBuilding extends IUniqueModel {
    * of these elevators.
    */
   elevators: Set<number>;
+
+  /**
+   * The requests which are created by people in the
+   * building.
+   */
+  requests: Set<number>;
 }

@@ -13,18 +13,18 @@ const ElevatorProperties = ({ elevator }: { elevator: IElevator }) => {
       justifyContent="space-between"
       flexWrap="wrap"
     >
-      <Typography component="span" variant="h6">
+      <Typography component="span" variant="h6" sx={{ mr: 3 }}>
         #{elevator.id}
       </Typography>
 
-      <Typography component="span" variant="h6" display="flex" alignItems="center">
+      <Typography component="span" variant="h6" display="flex" alignItems="center" sx={{ mr: 3 }}>
         <Tooltip title="Speed">
           <SpeedIcon sx={{ mr: 1 }} />
         </Tooltip>
         {elevator.speed}m/s
       </Typography>
 
-      <Typography component="span" variant="h6" display="flex" alignItems="center">
+      <Typography component="span" variant="h6" display="flex" alignItems="center" sx={{ mr: 3 }}>
         <Tooltip title="Max. count of people">
           <PeopleIcon sx={{ mr: 1 }} />
         </Tooltip>

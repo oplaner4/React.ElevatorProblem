@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useRecoilState } from 'recoil';
 import ElevatorSetter from '../elevator/ElevatorSetter';
 import EditIcon from '@mui/icons-material/Edit';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { predefinedBuildings } from 'app/data/buildings';
@@ -16,19 +17,14 @@ import { getNewId } from 'app/utils/data/idIncrementer';
 import { predefinedElevators } from 'app/data/elevators';
 import IElevator from 'app/models/IElevator';
 import ElevatorProperties from 'app/components/elevator/ElevatorProperties';
-
-export const defaultBuilding: IBuilding = {
-  id: 0,
-  countFloors: 2,
-  floorHeight: 5,
-  elevators: new Set(),
-};
+import { seedBuilding, seedElevator } from 'app/utils/data/dataSeeder';
+import { addRecord, deleteRecord, updateRecord } from 'app/utils/data/dataManipulator';
 
 const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) => {
   const [buildings, setBuildings] = useRecoilState(buildingsAtom);
   const [elevators, setElevators] = useRecoilState(elevatorsAtom);
 
-  const [data, setData] = useState<IBuilding>(modelId === 0 ? { ...defaultBuilding } : { ...buildings[modelId] });
+  const [data, setData] = useState<IBuilding>(modelId === 0 ? seedBuilding() : { ...buildings[modelId] });
 
   const [messageContent, setMessageContent] = useState<React.ReactElement | null>(null);
   const [elevatorModalContent, setElevatorModalContent] = useState<JSX.Element | null>(null);
@@ -39,31 +35,17 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
       return;
     }
 
-    const newElevators = { ...elevators };
-    const newId = getNewId(elevators);
-    newElevators[newId] = {
-      id: newId,
-      currentFloor: 0,
-      highestFloor: 1,
-      lowestFloor: 0,
-      speed: data.floorHeight / 2,
-      inService: false,
-      maxCountPeople: 10,
-    };
-    setElevators(newElevators);
+    const newElevator = seedElevator(1);
+    setElevators(addRecord(newElevator, elevators));
 
     const newData = { ...data, elevators: new Set(data.elevators) };
-    newData.elevators.add(newId);
+    newData.elevators.add(newElevator.id);
     setData(newData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelId]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (modelId === 0) {
-      data.id = getNewId(buildings);
-    }
 
     const errorMsg = checkCorrectBuilding(data, elevators);
 
@@ -72,11 +54,15 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
       return;
     }
 
-    const newBuildings = { ...buildings };
-    newBuildings[data.id] = data;
-    setBuildings(newBuildings);
+    if (modelId === 0) {
+      setBuildings(addRecord(data, buildings));
+      setData(seedBuilding());
+    } else {
+      setBuildings(updateRecord(data, buildings));
+    }
+
     onCorrectlySet(data);
-    setData({ ...defaultBuilding });
+
     setMessageContent(null);
   };
 
@@ -91,15 +77,15 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
     });
     setElevators(newElevators);
 
-    const predefinedBuilding = predefinedBuildings[buildingName];
-    const newBuildings = { ...buildings };
-    const newId = getNewId(buildings);
-    newBuildings[newId] = {
-      ...predefinedBuilding,
-      id: newId,
-      elevators: addedElevatorIds,
-    };
-    setBuildings(newBuildings);
+    setBuildings(
+      addRecord(
+        {
+          ...predefinedBuildings[buildingName],
+          elevators: addedElevatorIds,
+        },
+        buildings
+      )
+    );
   };
 
   const handleEditElevator = (model: IElevator) => {
@@ -108,16 +94,7 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
     const errorMsg = checkCorrectElevatorForBuilding(model, data);
     if (errorMsg.length > 0) {
       setMessageContent(<>{errorMsg}</>);
-      return;
     }
-
-    const newElevators = new Set(data.elevators);
-    newElevators.add(model.id);
-
-    setData({
-      ...data,
-      elevators: newElevators,
-    });
   };
 
   const handleCreateElevator = (model: IElevator) => {
@@ -136,10 +113,6 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
       ...data,
       elevators: newElevatorIds,
     });
-
-    const newElevators = { ...elevators };
-    newElevators[model.id] = model;
-    setElevators(newElevators);
   };
 
   const handleDeleteElevator = (id: number) => {
@@ -151,9 +124,20 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
       elevators: newElevatorIds,
     });
 
-    const newElevators = { ...elevators };
-    delete newElevators[id];
-    setElevators(newElevators);
+    setElevators(deleteRecord(id, elevators));
+  };
+
+  const handleCloneElevator = (id: number) => {
+    const newElevator = { ...elevators[id] };
+    setElevators(addRecord(newElevator, elevators));
+
+    const newElevatorIds = new Set(data.elevators);
+    newElevatorIds.add(newElevator.id);
+
+    setData({
+      ...data,
+      elevators: newElevatorIds,
+    });
   };
 
   return (
@@ -289,11 +273,11 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
 
                 return (
                   <ListItem key={id}>
-                    <Box display="flex" justifyContent="space-between" width="100%" flexWrap="wrap">
+                    <Box display="flex" justifyContent="space-between" width="100%">
                       <Box>
                         <ElevatorProperties elevator={elevator} />
                       </Box>
-                      <ButtonGroup size="small">
+                      <ButtonGroup size="small" sx={{ alignSelf: 'center' }}>
                         <Tooltip title="Edit elevator">
                           <Button
                             onClick={() =>
@@ -306,6 +290,18 @@ const BuildingSetter = ({ modelId, onCorrectlySet }: ISetterProps<IBuilding>) =>
                             size="small"
                           >
                             <EditIcon />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip title="Clone elevator">
+                          <Button
+                            onClick={() => {
+                              handleCloneElevator(id);
+                            }}
+                            variant="contained"
+                            color={'dark' as 'inherit'}
+                            size="small"
+                          >
+                            <ContentCopyIcon />
                           </Button>
                         </Tooltip>
                         <Tooltip title="Delete elevator">

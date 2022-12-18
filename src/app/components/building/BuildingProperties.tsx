@@ -14,18 +14,18 @@ const BuildingProperties = ({ building }: { building: IBuilding }) => {
       justifyContent="space-between"
       flexWrap="wrap"
     >
-      <Typography component="span" variant="h6">
+      <Typography component="span" variant="h6" sx={{ mr: 3 }}>
         #{building.id}
       </Typography>
 
-      <Typography component="span" variant="h6" display="flex" alignItems="center">
+      <Typography component="span" variant="h6" display="flex" alignItems="center" sx={{ mr: 3 }}>
         <Tooltip title="Count of floors">
           <ApartmentIcon sx={{ mr: 1 }} />
         </Tooltip>
         {building.countFloors}
       </Typography>
 
-      <Typography component="span" variant="h6" display="flex" alignItems="center">
+      <Typography component="span" variant="h6" display="flex" alignItems="center" sx={{ mr: 3 }}>
         <Tooltip title="Count of elevators">
           <ElevatorIcon sx={{ mr: 1 }} />
         </Tooltip>
@@ -33,7 +33,7 @@ const BuildingProperties = ({ building }: { building: IBuilding }) => {
         {building.elevators.size}
       </Typography>
 
-      <Typography component="span" variant="h6" display="flex" alignItems="center">
+      <Typography component="span" variant="h6" display="flex" alignItems="center" sx={{ mr: 3 }}>
         <Tooltip title="Floor height">
           <HeightIcon />
         </Tooltip>

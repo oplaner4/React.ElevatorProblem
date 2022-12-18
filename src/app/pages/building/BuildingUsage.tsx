@@ -1,39 +1,40 @@
-import { Grid, Typography, List, ListItem, Box, IconButton, Tooltip } from '@mui/material';
+import { Grid, Typography, List, ListItem, Box, IconButton, Tooltip, Button, ButtonGroup } from '@mui/material';
 import { buildingsAtom, elevatorsAtom, peopleAtom, requestsAtom, timeToLoadAtom } from 'app/state/atom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRecoilState, useRecoilValue } from 'recoil';
-import BuildingViewer from './BuildingViewer';
+import BuildingViewer from '../../components/building/BuildingViewer';
 import { useEffect, useState } from 'react';
-import ElevatorRequestCreator from '../request/ElevatorRequestCreator';
-import { getFormattedTime } from 'app/utils/utilities';
-import IElevator from 'app/models/IElevator';
-import { chooseBetterElevator, getRunnableElevators } from 'app/utils/data/elevatorSuitability';
+import ElevatorRequestCreator from '../../components/request/ElevatorRequestCreator';
+import { getEarliestRequest } from 'app/utils/data/elevatorSuitability';
 import { IElevatorRequestStatus } from 'app/models/IElevatorRequest';
-import RequestStatusReporter from 'app/utils/data/RequestStatusReporter';
+import RequestStatusReporter from 'app/components/request/RequestStatusReporter';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ClearAllIcon from '@mui/icons-material/ClearAll';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import RequestProperties from 'app/components/request/RequestProperties';
+import { deleteMoreRecords, deleteRecord, modifyRecord } from 'app/utils/data/dataManipulator';
+import IBuilding from 'app/models/IBuilding';
+import IUniqueModel from 'app/models/IUniqueModel';
 
-export interface BuildingUsageProps {
-  id?: number;
-}
-
-export interface IElevatorRequestAndNewStatus {
+interface IRequestAndStatus {
   requestId: number;
   status: IElevatorRequestStatus;
 }
 
-const BuildingUsage = ({ id }: BuildingUsageProps) => {
+const BuildingUsage = ({ id }: Partial<IUniqueModel>) => {
   const [params] = useSearchParams();
-  const buildingId = params.get('id');
-  const buildings = useRecoilValue(buildingsAtom);
+  const [buildings, setBuildings] = useRecoilState(buildingsAtom);
   const [requests, setRequests] = useRecoilState(requestsAtom);
   const [people, setPeople] = useRecoilState(peopleAtom);
   const timeToLoad = useRecoilValue(timeToLoadAtom);
 
   const [elevators, setElevators] = useRecoilState(elevatorsAtom);
-  const [newRequestId, setNewRequestId] = useState<number | null>(null);
-  const [requestAndNewStatus, setRequestAndNewStatus] = useState<IElevatorRequestAndNewStatus | null>(null);
-  const [freeElevatorId, setFreeElevatorId] = useState<number | null>(null);
+  const [requestAndStatus, setRequestAndStatus] = useState<IRequestAndStatus | null>(null);
 
+  const [elevatorDealWithRequests, setElevatorDealWithRequests] = useState<number | null>(null);
+
+  // eslint-disable-next-line prefer-const
+  let building: IBuilding;
   const navigate = useNavigate();
 
   let parsedBuildingId = 0;
@@ -41,221 +42,306 @@ const BuildingUsage = ({ id }: BuildingUsageProps) => {
   if (typeof id === 'number') {
     parsedBuildingId = id;
   } else {
-    parsedBuildingId = Number(buildingId);
+    parsedBuildingId = Number(params.get('id'));
   }
 
-  const runElevator = (elevatorId: number, targetFloor: number, onReached: (elevatorId: number) => void) => {
-    const interval = setInterval(() => {
-      setElevators((el) => {
-        if (
-          el[elevatorId].currentFloor === targetFloor ||
-          (targetFloor > el[elevatorId].highestFloor && el[elevatorId].currentFloor === el[elevatorId].highestFloor) ||
-          (targetFloor < el[elevatorId].lowestFloor && el[elevatorId].currentFloor === el[elevatorId].lowestFloor)
-        ) {
-          clearInterval(interval);
-          onReached(elevatorId);
-          return el;
-        }
-
-        const newElevators = { ...el };
-        newElevators[elevatorId] = {
-          ...newElevators[elevatorId],
-          currentFloor:
-            newElevators[elevatorId].currentFloor > targetFloor
-              ? newElevators[elevatorId].currentFloor - 1
-              : newElevators[elevatorId].currentFloor + 1,
-        };
-
-        return newElevators;
-      });
-    }, 1000 * (buildings[parsedBuildingId].floorHeight / elevators[elevatorId].speed));
+  const adjustToStatus = (requestId: number, status: IElevatorRequestStatus) => {
+    setRequestAndStatus({ requestId, status });
   };
 
-  const processRequest = (requestId: number) => {
-    const building = buildings[parsedBuildingId];
+  useEffect(() => {
+    if (!(parsedBuildingId in buildings)) {
+      navigate('/data');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (requestAndStatus === null) {
+      return;
+    }
+
+    const { requestId, status } = requestAndStatus;
+    setRequestAndStatus(null);
+
     const request = requests[requestId];
-    const candidateElevators = getRunnableElevators(building, elevators, request);
 
-    let prevElevator: IElevator | null = null;
-    let chosenElevator: number | null = null;
-
-    for (const elevatorId of candidateElevators) {
-      if (prevElevator === null) {
-        prevElevator = elevators[elevatorId];
-        chosenElevator = prevElevator.id;
-        continue;
-      }
-
-      const currentElevator = elevators[elevatorId];
-      const betterElevator = chooseBetterElevator(prevElevator, currentElevator, request);
-
-      if (chosenElevator === null || betterElevator !== null) {
-        chosenElevator = betterElevator;
-      }
-
-      prevElevator = currentElevator;
+    switch (status) {
+      case IElevatorRequestStatus.Pending:
+      case IElevatorRequestStatus.PersonLoading:
+      case IElevatorRequestStatus.PersonUnloading:
+        break;
+      case IElevatorRequestStatus.Finished:
+        setPeople(
+          modifyRecord(
+            request.personId,
+            (model) => {
+              model.currentFloor = request.targetFloor;
+              model.currentBuildingId = request.targetFloor === 0 ? null : building.id;
+              model.isRequesting = false;
+            },
+            people
+          )
+        );
+        break;
+      case IElevatorRequestStatus.ElevatorArriving:
+        if (status === request.status) {
+          setElevators(
+            modifyRecord(
+              request.elevatorId,
+              (model) => {
+                model.currentFloor += request.loadFloor > model.currentFloor ? 1 : -1;
+              },
+              elevators
+            )
+          );
+          return;
+        }
+        break;
+      case IElevatorRequestStatus.ElevatorReachingTarget:
+        if (status === request.status) {
+          setElevators(
+            modifyRecord(
+              request.elevatorId,
+              (model) => {
+                model.currentFloor += request.targetFloor > model.currentFloor ? 1 : -1;
+              },
+              elevators
+            )
+          );
+          return;
+        }
+        break;
+      default:
+        return;
     }
 
-    if (chosenElevator === null) {
-      setRequestAndNewStatus({ requestId, status: IElevatorRequestStatus.Refused });
-      return;
-    }
+    setRequests(
+      modifyRecord(
+        requestId,
+        (model) => {
+          model.status = status;
+        },
+        requests
+      )
+    );
 
-    const newElevators = { ...elevators };
-    newElevators[chosenElevator] = {
-      ...newElevators[chosenElevator],
-      inService: true,
-    };
-    setElevators(newElevators);
-    setRequestAndNewStatus({ requestId, status: IElevatorRequestStatus.ElevatorArriving });
-    runElevator(chosenElevator, request.loadFloor, (id) => {
-      setRequestAndNewStatus({ requestId, status: IElevatorRequestStatus.PersonLoading });
-      setTimeout(() => {
-        setRequestAndNewStatus({ requestId, status: IElevatorRequestStatus.ElevatorReachingTarget });
-        runElevator(id, request.targetFloor, () => {
-          setRequestAndNewStatus({ requestId, status: IElevatorRequestStatus.PersonUnloading });
-          setTimeout(() => {
-            setFreeElevatorId(id);
-            setRequestAndNewStatus({ requestId, status: IElevatorRequestStatus.Finished });
-          }, timeToLoad);
-        });
-      }, timeToLoad);
-    });
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestAndStatus]);
 
   useEffect(() => {
-    if (!(parsedBuildingId in buildings)) {
-      navigate('/data');
+    if (requestAndStatus === null) {
       return;
     }
 
-    if (newRequestId === null || requests[newRequestId].status !== IElevatorRequestStatus.Created) {
+    const request = requests[requestAndStatus.requestId];
+
+    if (request.status === IElevatorRequestStatus.Finished) {
       return;
     }
 
-    processRequest(newRequestId);
+    if (
+      request.status === IElevatorRequestStatus.ElevatorArriving ||
+      request.status === IElevatorRequestStatus.ElevatorReachingTarget
+    ) {
+      adjustToStatus(requestAndStatus.requestId, requestAndStatus.status);
+      return;
+    }
+
+    const ms = request.status === IElevatorRequestStatus.Pending ? 500 : timeToLoad;
+    const timer = setTimeout(() => setElevatorDealWithRequests(request.elevatorId), ms);
+
+    return () => {
+      clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newRequestId]);
+  }, [requests]);
 
   useEffect(() => {
-    if (requestAndNewStatus === null) {
+    if (requestAndStatus === null) {
       return;
     }
 
-    const newRequests = { ...requests };
-    newRequests[requestAndNewStatus.requestId] = {
-      ...newRequests[requestAndNewStatus.requestId],
-      status: requestAndNewStatus.status,
+    const request = requests[requestAndStatus.requestId];
+
+    if (
+      request.status !== IElevatorRequestStatus.ElevatorArriving &&
+      request.status !== IElevatorRequestStatus.ElevatorReachingTarget
+    ) {
+      return;
+    }
+
+    const ms = 1000 * (building.floorHeight / elevators[request.elevatorId].speed);
+    const timer = setTimeout(() => setElevatorDealWithRequests(request.elevatorId), ms);
+
+    return () => {
+      clearTimeout(timer);
     };
-    setRequests(newRequests);
-
-    if (requestAndNewStatus.status !== IElevatorRequestStatus.Finished) {
-      return;
-    }
-
-    if (!(parsedBuildingId in buildings)) {
-      navigate('/data');
-      return;
-    }
-
-    const finishedRequest = requests[requestAndNewStatus.requestId];
-    const newPeople = { ...people };
-    newPeople[finishedRequest.personId] = {
-      ...newPeople[finishedRequest.personId],
-      currentFloor: finishedRequest.targetFloor,
-      currentBuildingId: finishedRequest.targetFloor === 0 ? null : parsedBuildingId,
-    };
-    setPeople(newPeople);
-
-    setRequestAndNewStatus(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestAndNewStatus]);
+  }, [elevators]);
 
   useEffect(() => {
-    if (freeElevatorId === null) {
+    if (elevatorDealWithRequests === null) {
       return;
     }
 
-    const newElevators = { ...elevators };
-    newElevators[freeElevatorId] = {
-      ...newElevators[freeElevatorId],
-      inService: false,
-    };
-    setElevators(newElevators);
-    setFreeElevatorId(null);
+    const requestId = getEarliestRequest(elevatorDealWithRequests, requests, elevators);
+    setElevatorDealWithRequests(null);
+
+    if (requestId === null) {
+      return;
+    }
+
+    const request = requests[requestId];
+    const elevator = elevators[request.elevatorId];
+
+    if (request.loadFloor === elevator.currentFloor) {
+      adjustToStatus(
+        requestId,
+        request.status === IElevatorRequestStatus.PersonLoading
+          ? IElevatorRequestStatus.ElevatorReachingTarget
+          : IElevatorRequestStatus.PersonLoading
+      );
+      return;
+    }
+
+    if (request.status !== IElevatorRequestStatus.ElevatorArriving && request.targetFloor === elevator.currentFloor) {
+      adjustToStatus(
+        requestId,
+        request.status === IElevatorRequestStatus.PersonUnloading
+          ? IElevatorRequestStatus.Finished
+          : IElevatorRequestStatus.PersonUnloading
+      );
+      return;
+    }
+
+    if (request.status === IElevatorRequestStatus.Pending) {
+      adjustToStatus(requestId, IElevatorRequestStatus.ElevatorArriving);
+      return;
+    }
+
+    adjustToStatus(requestId, request.status);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [freeElevatorId]);
+  }, [elevatorDealWithRequests]);
 
   if (!(parsedBuildingId in buildings)) {
     return null;
   }
 
-  const buildingRequests = Object.keys(requests)
-    .map((sid) => Number(sid))
-    .filter((id) => {
-      const person = people[requests[id].personId];
-      return person.currentBuildingId === null || person.currentBuildingId === parsedBuildingId;
-    })
-    .sort((a, b) => requests[b].id - requests[a].id);
+  building = buildings[parsedBuildingId];
+  const buildingRequests = Array.from(building.requests).sort((a, b) => requests[b].id - requests[a].id);
 
   return (
-    <Grid container>
-      <Grid item lg={7} xl={8}>
+    <Grid container justifyContent="center">
+      <Grid item xs={12} lg={8}>
         <BuildingViewer id={parsedBuildingId} />
       </Grid>
-      <Grid item lg={5} xl={4} justifyContent="center" display="flex" flexDirection="column">
-        <Typography component="h2" variant="h5" color="primary.main">
-          Requests
-        </Typography>
-        <List sx={{ overflow: 'auto', maxHeight: 200 }}>
-          {buildingRequests.length === 0 ? (
-            <ListItem>
-              <Typography variant="h6" component="p" color="dark.main">
-                No requests created yet.
-              </Typography>
-            </ListItem>
-          ) : (
-            buildingRequests.map((id) => {
-              const request = requests[id];
-              const person = people[request.personId];
+      <Grid item xs={12} sm={9} lg={4} justifyContent="center" display="flex" flexDirection="column">
+        <Box sx={{ overflow: 'auto', maxHeight: 200 }}>
+          <Box display="flex" justifyContent={{ xs: 'center', md: 'space-between' }} alignItems="center">
+            <Typography component="h2" variant="h5" color="primary.main">
+              Requests
+            </Typography>
+            <Tooltip title="Delete all finished requests">
+              <IconButton
+                sx={{ visibility: buildingRequests.length <= 1 ? 'hidden' : 'visible', mx: 1 }}
+                color="error"
+                onClick={() => {
+                  setRequests(
+                    deleteMoreRecords(
+                      buildingRequests.filter((id) => requests[id].status === IElevatorRequestStatus.Finished),
+                      requests
+                    )
+                  );
 
-              return (
-                <ListItem key={id}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" width="100%">
-                    <Typography component="span" variant="h6" color="dark.main">
-                      #{request.id}, {getFormattedTime(request.timeRequested)}, {person.alias}, {request.loadFloor}{' '}
-                      -&gt; {request.targetFloor}.
-                    </Typography>
-                    <Box display="flex" alignItems="center">
-                      {request.status === IElevatorRequestStatus.Finished ? (
-                        <Tooltip title="Delete request">
-                          <IconButton
-                            color="error"
-                            onClick={() => {
-                              const newRequests = { ...requests };
-                              delete newRequests[id];
-                              setRequests(newRequests);
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      ) : null}
-                      <RequestStatusReporter request={request} fontSize="1.5rem" />
+                  setBuildings(
+                    modifyRecord(
+                      parsedBuildingId,
+                      (model) => {
+                        model.requests = new Set(
+                          buildingRequests.filter((id) => requests[id].status !== IElevatorRequestStatus.Finished)
+                        );
+                      },
+                      buildings
+                    )
+                  );
+                }}
+              >
+                <ClearAllIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          <List>
+            {buildingRequests.length === 0 ? (
+              <ListItem>
+                <Typography variant="h6" component="p" color="dark.main">
+                  No requests created yet.
+                </Typography>
+              </ListItem>
+            ) : (
+              buildingRequests.map((id) => {
+                const request = requests[id];
+
+                return (
+                  <ListItem key={id}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" width="100%">
+                      <Box>
+                        <RequestProperties request={request} people={people} />
+                      </Box>
+                      <Box display="flex" alignItems="center" flexWrap="nowrap">
+                        {request.status === IElevatorRequestStatus.Finished ? (
+                          <Tooltip title="Delete request">
+                            <IconButton
+                              color="error"
+                              onClick={() => {
+                                setBuildings(
+                                  modifyRecord(
+                                    parsedBuildingId,
+                                    (model) => {
+                                      model.requests = new Set(model.requests);
+                                      model.requests.delete(id);
+                                    },
+                                    buildings
+                                  )
+                                );
+
+                                setRequests(deleteRecord(id, requests));
+                              }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                        <RequestStatusReporter request={request} iconsFontSize="1.5rem" />
+                      </Box>
                     </Box>
-                  </Box>
-                </ListItem>
-              );
-            })
-          )}
-        </List>
+                  </ListItem>
+                );
+              })
+            )}
+          </List>
+        </Box>
+
         <Box mb={2} mt={2}>
           <Typography component="h2" variant="h5" color="primary.main">
             Create request
           </Typography>
         </Box>
 
-        <ElevatorRequestCreator buildingId={parsedBuildingId} onCreated={(d) => setNewRequestId(d.id)} />
+        <ElevatorRequestCreator
+          buildingId={parsedBuildingId}
+          onCreated={(requestId) => adjustToStatus(requestId, IElevatorRequestStatus.Pending)}
+        />
+      </Grid>
+      <Grid item xs={12}>
+        <Box mt={3}>
+          <ButtonGroup>
+            <Button variant="contained" color={'dark' as 'inherit'} onClick={() => navigate('/data')}>
+              <ArrowBackIcon /> Back
+            </Button>
+          </ButtonGroup>
+        </Box>
       </Grid>
     </Grid>
   );

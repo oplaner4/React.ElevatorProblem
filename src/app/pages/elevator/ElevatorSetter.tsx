@@ -2,6 +2,8 @@ import { Alert, Box, Button, Grid, TextField, Typography } from '@mui/material';
 import IElevator from 'app/models/IElevator';
 import ISetterProps from 'app/models/ISetterProps';
 import { elevatorsAtom } from 'app/state/atom';
+import { addRecord, updateRecord } from 'app/utils/data/dataManipulator';
+import { seedElevator } from 'app/utils/data/dataSeeder';
 import { getNewId } from 'app/utils/data/idIncrementer';
 import { checkCorrectElevator } from 'app/utils/data/modelsChecker';
 import { useState } from 'react';
@@ -12,27 +14,13 @@ export interface ElevatorSetterProps extends ISetterProps<IElevator> {
 }
 
 const ElevatorSetter = ({ highestFloor, modelId, onCorrectlySet }: ElevatorSetterProps) => {
-  const defaultData: IElevator = {
-    id: 0,
-    lowestFloor: 0,
-    highestFloor: highestFloor ?? 1,
-    currentFloor: 0,
-    speed: 2.5,
-    inService: false,
-    maxCountPeople: 10,
-  };
-
   const [elevators, setElevators] = useRecoilState(elevatorsAtom);
 
-  const [data, setData] = useState<IElevator>(modelId === 0 ? { ...defaultData } : { ...elevators[modelId] });
+  const [data, setData] = useState<IElevator>(modelId === 0 ? seedElevator(highestFloor) : { ...elevators[modelId] });
 
   const [messageContent, setMessageContent] = useState<React.ReactElement | null>(null);
 
   const handleSubmit = () => {
-    if (modelId === 0) {
-      data.id = getNewId(elevators);
-    }
-
     const errorMsg = checkCorrectElevator(data);
 
     if (errorMsg.length > 0) {
@@ -40,11 +28,14 @@ const ElevatorSetter = ({ highestFloor, modelId, onCorrectlySet }: ElevatorSette
       return;
     }
 
-    const newElevators = { ...elevators };
-    newElevators[data.id] = data;
-    setElevators(newElevators);
+    if (modelId === 0) {
+      setElevators(addRecord(data, elevators));
+      setData(seedElevator(highestFloor));
+    } else {
+      setElevators(updateRecord(data, elevators));
+    }
+
     onCorrectlySet(data);
-    setData({ ...defaultData });
     setMessageContent(null);
   };
 
@@ -121,9 +112,11 @@ const ElevatorSetter = ({ highestFloor, modelId, onCorrectlySet }: ElevatorSette
             value={data.highestFloor}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               const parsed = parseInt(e.currentTarget.value);
+              const value = isNaN(parsed) ? 0 : parsed;
               setData({
                 ...data,
-                highestFloor: isNaN(parsed) ? 0 : parsed,
+                highestFloor: value,
+                currentFloor: data.currentFloor > value ? value : data.currentFloor,
               });
             }}
           />
@@ -164,9 +157,12 @@ const ElevatorSetter = ({ highestFloor, modelId, onCorrectlySet }: ElevatorSette
             value={data.lowestFloor}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               const parsed = parseInt(e.currentTarget.value);
+              const value = isNaN(parsed) ? 0 : parsed;
+
               setData({
                 ...data,
-                lowestFloor: isNaN(parsed) ? 0 : parsed,
+                lowestFloor: value,
+                currentFloor: data.currentFloor < value ? value : data.currentFloor,
               });
             }}
           />

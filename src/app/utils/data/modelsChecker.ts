@@ -10,10 +10,6 @@ import IPerson from 'app/models/IPerson';
  * @returns Error message in case of problem, an empty string otherwise.
  */
 export const checkCorrectElevator = (elevator: IElevator): string => {
-  if (elevator.id <= 0) {
-    return 'Unique identifier must be greater than zero.';
-  }
-
   if (elevator.lowestFloor < 0) {
     return 'The lowest floor must be greater or equal to zero.';
   }
@@ -46,6 +42,10 @@ export const checkCorrectElevator = (elevator: IElevator): string => {
     return 'A speed of the elevator must be greater than zero.';
   }
 
+  if (elevator.maxCountPeople <= 1) {
+    return 'The maximum count of people must be greater or equal to the only person.';
+  }
+
   return '';
 };
 
@@ -71,10 +71,6 @@ export const checkCorrectElevatorForBuilding = (elevator: IElevator, building: I
  * @returns Error message in case of problem, an empty string otherwise.
  */
 export const checkCorrectBuilding = (building: IBuilding, elevators: Record<number, IElevator>): string => {
-  if (building.id <= 0) {
-    return 'Unique identifier must be greater than zero.';
-  }
-
   if (building.countFloors < 2) {
     return 'The count of floors must be greater than one.';
   }
@@ -123,10 +119,6 @@ export const checkCorrectBuilding = (building: IBuilding, elevators: Record<numb
  * @returns Error message in case of problem, an empty string otherwise.
  */
 export const checkCorrectPerson = (person: IPerson): string => {
-  if (person.id <= 0) {
-    return 'Unique identifier must be greater than zero.';
-  }
-
   if (person.alias === null || person.alias.length === 0) {
     return 'Alias must be specified.';
   }

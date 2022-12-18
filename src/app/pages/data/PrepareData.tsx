@@ -12,8 +12,9 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
 import { useNavigate } from 'react-router-dom';
 import BuildingProperties from 'app/components/building/BuildingProperties';
+import { deleteMoreRecords, deleteRecord } from 'app/utils/data/dataManipulator';
 
-const DataSetter = () => {
+const PrepareData = () => {
   const [buildings, setBuildings] = useRecoilState(buildingsAtom);
   const [elevators, setElevators] = useRecoilState(elevatorsAtom);
   const [people, setPeople] = useRecoilState(peopleAtom);
@@ -26,7 +27,7 @@ const DataSetter = () => {
   return (
     <Box>
       <Grid container spacing={4}>
-        <Grid item xs={12} sm={6} md={7} lg={8}>
+        <Grid item xs={12} md={7} lg={8}>
           <Typography component="h2" variant="h5" color="primary.main">
             Buildings
           </Typography>
@@ -45,12 +46,12 @@ const DataSetter = () => {
 
                 return (
                   <ListItem key={id}>
-                    <Box display="flex" justifyContent="space-between" flexWrap="wrap" width="100%">
+                    <Box display="flex" justifyContent="space-between" width="100%">
                       <Box>
                         <BuildingProperties building={building} />
                       </Box>
 
-                      <ButtonGroup size="small">
+                      <ButtonGroup size="small" sx={{ alignSelf: 'center' }}>
                         <Tooltip title="Edit building">
                           <Button
                             onClick={() =>
@@ -72,32 +73,14 @@ const DataSetter = () => {
                         <Tooltip title="Delete building">
                           <Button
                             onClick={() => {
-                              const newElevators = { ...elevators };
-                              buildings[id].elevators.forEach((elevatorId) => {
-                                delete newElevators[elevatorId];
-                              });
-                              setElevators(newElevators);
-                              const newBuildings = { ...buildings };
-                              delete newBuildings[id];
-                              setBuildings(newBuildings);
+                              setElevators(deleteMoreRecords(buildings[id].elevators, elevators));
+                              setBuildings(deleteRecord(id, buildings));
                             }}
                             variant="contained"
                             color="error"
                             size="small"
                           >
                             <DeleteIcon />
-                          </Button>
-                        </Tooltip>
-                        <Tooltip title="View building">
-                          <Button
-                            onClick={() => {
-                              navigate(`/viewer?id=${id}`);
-                            }}
-                            variant="contained"
-                            color="primary"
-                            size="small"
-                          >
-                            <VisibilityIcon />
                           </Button>
                         </Tooltip>
                         <Tooltip title="Usage of building">
@@ -120,7 +103,7 @@ const DataSetter = () => {
             )}
           </List>
         </Grid>
-        <Grid item xs={12} sm={6} md={5} lg={4}>
+        <Grid item xs={12} md={5} lg={4}>
           <Typography component="h2" variant="h5" color="primary.main">
             People
           </Typography>
@@ -165,9 +148,7 @@ const DataSetter = () => {
                         <Tooltip title="Delete person">
                           <Button
                             onClick={() => {
-                              const newPeople = { ...people };
-                              delete newPeople[id];
-                              setPeople(newPeople);
+                              setPeople(deleteRecord(id, people));
                             }}
                             variant="contained"
                             color="error"
@@ -184,7 +165,7 @@ const DataSetter = () => {
             )}
           </List>
         </Grid>
-        <Grid item xs={12} sm={6} md={7} lg={8}>
+        <Grid item xs={12} md={7} lg={8}>
           <Box mb={2}>
             <Typography component="h2" variant="h5" color="primary.main">
               Create building
@@ -193,7 +174,7 @@ const DataSetter = () => {
 
           <BuildingSetter modelId={0} onCorrectlySet={() => {}} />
         </Grid>
-        <Grid item xs={12} sm={6} md={5} lg={4}>
+        <Grid item xs={12} md={5} lg={4}>
           <Box mb={2}>
             <Typography component="h2" variant="h5" color="primary.main">
               Create person
@@ -219,4 +200,4 @@ const DataSetter = () => {
   );
 };
 
-export default DataSetter;
+export default PrepareData;

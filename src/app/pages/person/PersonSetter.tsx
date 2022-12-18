@@ -2,31 +2,20 @@ import { Alert, Box, Button, TextField } from '@mui/material';
 import IPerson from 'app/models/IPerson';
 import ISetterProps from 'app/models/ISetterProps';
 import { peopleAtom } from 'app/state/atom';
-import { getNewId } from 'app/utils/data/idIncrementer';
+import { addRecord, updateRecord } from 'app/utils/data/dataManipulator';
+import { seedPerson } from 'app/utils/data/dataSeeder';
 import { checkCorrectPerson, checkCorrectPersonWithinPeople } from 'app/utils/data/modelsChecker';
 import { useState } from 'react';
 import { useRecoilState } from 'recoil';
 
-export const defaultPerson: IPerson = {
-  id: 0,
-  alias: '',
-  currentBuildingId: null,
-  currentFloor: 0,
-};
-
 const PersonSetter = ({ modelId, onCorrectlySet }: ISetterProps<IPerson>) => {
   const [people, setPeople] = useRecoilState(peopleAtom);
-  const [data, setData] = useState<IPerson>(modelId === 0 ? defaultPerson : { ...people[modelId] });
+  const [data, setData] = useState<IPerson>(modelId === 0 ? seedPerson(0, '') : { ...people[modelId] });
 
   const [messageContent, setMessageContent] = useState<React.ReactElement | null>(null);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (modelId === 0) {
-      data.id = getNewId(people);
-    }
-
     let errorMsg = checkCorrectPerson(data);
 
     if (errorMsg.length === 0) {
@@ -38,11 +27,14 @@ const PersonSetter = ({ modelId, onCorrectlySet }: ISetterProps<IPerson>) => {
       return;
     }
 
-    const newPeople = { ...people };
-    newPeople[data.id] = data;
-    setPeople(newPeople);
+    if (modelId === 0) {
+      setPeople(addRecord(data, people));
+      setData(seedPerson(0, ''));
+    } else {
+      setPeople(updateRecord(data, people));
+    }
+
     onCorrectlySet(data);
-    setData(defaultPerson);
   };
 
   return (

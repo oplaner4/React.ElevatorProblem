@@ -9,37 +9,30 @@ import {
   MenuItem,
   SelectChangeEvent,
 } from '@mui/material';
-import IElevatorRequest, { IElevatorRequestStatus } from 'app/models/IElevatorRequest';
+import IElevatorRequest from 'app/models/IElevatorRequest';
 import { buildingsAtom, elevatorsAtom, peopleAtom, requestsAtom } from 'app/state/atom';
-import { getRunnableElevators } from 'app/utils/data/elevatorSuitability';
-import { getNewId } from 'app/utils/data/idIncrementer';
+import { addRecord, modifyRecord } from 'app/utils/data/dataManipulator';
+import { seedRequest } from 'app/utils/data/dataSeeder';
+import { canElevatorSatisfyRequest, chooseBestElevator } from 'app/utils/data/elevatorSuitability';
 import { checkCorrectPersonWithinRequest } from 'app/utils/data/modelsChecker';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRecoilState, useRecoilValue } from 'recoil';
 
 export interface ElevatorRequestCreatorProps {
   buildingId: number;
-  onCreated: (request: IElevatorRequest) => void;
+  onCreated: (requestId: number) => void;
 }
-
-const defaultData: IElevatorRequest = {
-  id: 0,
-  loadFloor: 0,
-  targetFloor: 1,
-  timeRequested: new Date(),
-  personId: 0,
-  status: IElevatorRequestStatus.Created,
-};
 
 const ElevatorRequestCreator = ({ buildingId, onCreated }: ElevatorRequestCreatorProps) => {
   const [people, setPeople] = useRecoilState(peopleAtom);
   const [requests, setRequests] = useRecoilState(requestsAtom);
-  const buildings = useRecoilValue(buildingsAtom);
+  const [buildings, setBuildings] = useRecoilState(buildingsAtom);
   const elevators = useRecoilValue(elevatorsAtom);
 
-  const [data, setData] = useState<IElevatorRequest>({ ...defaultData });
+  const [data, setData] = useState<IElevatorRequest>(seedRequest());
 
   const [messageContent, setMessageContent] = useState<React.ReactElement | null>(null);
+  const [createdRequestId, setCreatedRequestId] = useState<number>(0);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -50,11 +43,15 @@ const ElevatorRequestCreator = ({ buildingId, onCreated }: ElevatorRequestCreato
     }
 
     const person = people[data.personId];
-    data.id = getNewId(requests);
     data.timeRequested = new Date();
     data.loadFloor = person.currentBuildingId === null ? 0 : person.currentFloor;
-    const errorMsg = checkCorrectPersonWithinRequest(person, data);
 
+    if (person.isRequesting) {
+      setMessageContent(<>The person currently requests.</>);
+      return;
+    }
+
+    const errorMsg = checkCorrectPersonWithinRequest(person, data);
     if (errorMsg.length > 0) {
       setMessageContent(<>{errorMsg}</>);
       return;
@@ -65,35 +62,49 @@ const ElevatorRequestCreator = ({ buildingId, onCreated }: ElevatorRequestCreato
       return;
     }
 
-    if (getRunnableElevators(buildings[buildingId], elevators, data).length === 0) {
-      setMessageContent(<>No such elevator.</>);
+    if (Array.from(buildings[buildingId].elevators).every((e) => !canElevatorSatisfyRequest(elevators[e], data))) {
+      setMessageContent(<>Invalid target floor.</>);
       return;
     }
 
-    if (
-      Object.keys(requests).some((sid) => {
-        const request = requests[Number(sid)];
-        return request.status !== IElevatorRequestStatus.Finished && request.personId === data.personId;
-      })
-    ) {
-      setMessageContent(<>The person currently requests.</>);
-      return;
-    }
+    data.elevatorId = chooseBestElevator(buildings[buildingId], data, elevators, requests);
+    setRequests(addRecord(data, requests));
 
-    const newRequests = { ...requests };
-    newRequests[data.id] = data;
-    setRequests(newRequests);
-    onCreated(data);
-    setData({ ...defaultData });
+    setPeople(
+      modifyRecord(
+        data.personId,
+        (model) => {
+          model.currentBuildingId = buildingId;
+          model.isRequesting = true;
+        },
+        people
+      )
+    );
 
-    const newPeople = { ...people };
-    newPeople[data.personId] = {
-      ...newPeople[data.personId],
-      currentBuildingId: buildingId,
-    };
-    setPeople(newPeople);
+    setCreatedRequestId(data.id);
+
+    setBuildings(
+      modifyRecord(
+        buildingId,
+        (model) => {
+          model.requests = new Set(buildings[buildingId].requests);
+          model.requests.add(data.id);
+        },
+        buildings
+      )
+    );
+
+    setData(seedRequest());
     setMessageContent(null);
   };
+
+  useEffect(() => {
+    if (createdRequestId > 0) {
+      onCreated(createdRequestId);
+      setCreatedRequestId(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests]);
 
   return (
     <Box>

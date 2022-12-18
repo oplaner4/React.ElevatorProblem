@@ -6,7 +6,7 @@ import IUniqueModel from './IUniqueModel';
 export default interface IElevator extends IUniqueModel {
   /**
    * The lowest floor the elevator can run to.
-   * It must be smaller than highestFloor floor
+   * It must be smaller than the highest floor
    * and greater or equal to zero.
    */
   lowestFloor: number;
@@ -28,12 +28,8 @@ export default interface IElevator extends IUniqueModel {
    */
   speed: number;
   /**
-   * The elevator currently runs.
-   */
-  inService: boolean;
-  /**
-   * The maximum count of people who can be loaded
-   * into the elevator.
+   * The maximum count of people who can get into
+   * the elevator.
    */
   maxCountPeople: number;
 }

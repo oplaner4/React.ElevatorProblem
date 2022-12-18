@@ -4,12 +4,11 @@ import IUniqueModel from './IUniqueModel';
  * Represents status of the request.
  */
 export enum IElevatorRequestStatus {
-  Created,
+  Pending,
   ElevatorArriving,
   PersonLoading,
   ElevatorReachingTarget,
   PersonUnloading,
-  Refused,
   Finished,
 }
 
@@ -31,12 +30,16 @@ export default interface IElevatorRequest extends IUniqueModel {
    */
   timeRequested: Date;
   /**
-   * Id of the person who requested.
+   * Unique identifier of the person who requested.
    */
   personId: number;
-
   /**
    * Status in which the request currently is.
    */
   status: IElevatorRequestStatus;
+  /**
+   * Unique identifier of the elevator which satisfies the request.
+   * This must be valid for status elevator is arriving or later.
+   */
+  elevatorId: number;
 }

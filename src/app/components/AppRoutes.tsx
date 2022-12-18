@@ -1,7 +1,6 @@
 import About from 'app/pages/about/About';
 import BuildingUsage from 'app/pages/building/BuildingUsage';
-import BuildingViewer from 'app/pages/building/BuildingViewer';
-import DataSetter from 'app/pages/data/DataSetter';
+import PrepareData from 'app/pages/data/PrepareData';
 import Home from 'app/pages/home/Home';
 
 import { appAlertsAtom } from 'app/state/atom';
@@ -18,9 +17,8 @@ export enum AppRoute {
   Default = 0,
   Home = 1,
   About = 2,
-  Data = 3,
-  BuildingViewer = 4,
-  BuildingUsage = 5,
+  PrepareData = 3,
+  BuildingUsage = 4,
 }
 
 export interface AppRouteDefinition {
@@ -61,21 +59,12 @@ UseRoutes[AppRoute.About] = {
   group: AppRouteGroup.Default,
 };
 
-UseRoutes[AppRoute.Data] = {
+UseRoutes[AppRoute.PrepareData] = {
   path: '/data',
-  element: <DataSetter />,
+  element: <PrepareData />,
   inMenu: true,
   title: 'Prepare data',
   menuTitle: 'Prepare data',
-  group: AppRouteGroup.Default,
-};
-
-UseRoutes[AppRoute.BuildingViewer] = {
-  path: '/viewer',
-  element: <BuildingViewer />,
-  inMenu: false,
-  title: 'Building viewer',
-  menuTitle: 'Building viewer',
   group: AppRouteGroup.Default,
 };
 
